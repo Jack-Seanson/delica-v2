@@ -15,6 +15,21 @@ static OneWire oneWire(PIN_DS18B20);
 static DallasTemperature ds18b20(&oneWire);
 #endif
 
+void SensorManager::startTask() {
+    _mutex = xSemaphoreCreateMutex();
+    // Pin sensor task to core 0; LVGL task runs on core 1 (Arduino default)
+    xTaskCreatePinnedToCore(sensorTask, "sensors", 4096, this, 1, nullptr, 0);
+    Serial.println("[Sensors] Background task started on core 0");
+}
+
+void SensorManager::sensorTask(void *arg) {
+    SensorManager *self = static_cast<SensorManager*>(arg);
+    for (;;) {
+        self->update();
+        vTaskDelay(pdMS_TO_TICKS(20));
+    }
+}
+
 void SensorManager::begin() {
     Serial.println("[Sensors] Initializing...");
 
@@ -27,7 +42,11 @@ void SensorManager::begin() {
 
 #if PIN_DS18B20 >= 0
     ds18b20.begin();
-    Serial.printf("[Sensors] DS18B20 enabled on pin %d\n", PIN_DS18B20);
+    // Non-blocking mode: requestTemperatures() returns immediately,
+    // we read the result 800ms later on the next update cycle.
+    // This prevents the 750ms blocking stall that garbles the RGB LCD.
+    ds18b20.setWaitForConversion(false);
+    Serial.printf("[Sensors] DS18B20 enabled on pin %d (async mode)\n", PIN_DS18B20);
 #else
     Serial.println("[Sensors] DS18B20 disabled (PIN_DS18B20=-1)");
 #endif
@@ -37,39 +56,63 @@ void SensorManager::begin() {
 
 void SensorManager::update() {
     unsigned long now = millis();
-    if (now - _lastUpdate < SENSOR_UPDATE_MS) return;
-    _lastUpdate = now;
+
+#if PIN_DS18B20 >= 0
+    // ── DS18B20 async state machine ───────────────────────
+    // Phase 1: kick off conversion (non-blocking, returns immediately)
+    // Phase 2: 800ms later, read result then kick next conversion
+    if (!_ds18b20Started) {
+        // First call: start a conversion
+        if (now - _lastUpdate >= SENSOR_UPDATE_MS) {
+            ds18b20.requestTemperatures();
+            _ds18b20Started    = true;
+            _ds18b20RequestAt  = now;
+        }
+    } else {
+        // Conversion takes ~750ms; wait 800ms before reading
+        if (now - _ds18b20RequestAt >= 800) {
+            float ext = ds18b20.getTempFByIndex(0);
+            if (_mutex) xSemaphoreTake(_mutex, portMAX_DELAY);
+            if (ext > -100.0f) {
+                _data.externalTempF = ext;
+                _data.externalValid = true;
+            } else {
+                _data.externalValid = false;
+            }
+            if (_mutex) xSemaphoreGive(_mutex);
+            if (ext > -100.0f) Serial.printf("[Sensors] External: %.1f°F\n", ext);
+            // Kick next conversion
+            ds18b20.requestTemperatures();
+            _ds18b20RequestAt = now;
+            _lastUpdate       = now;
+        }
+    }
+#else
+    if (_mutex) xSemaphoreTake(_mutex, portMAX_DELAY);
+    _data.externalValid = false;
+    if (_mutex) xSemaphoreGive(_mutex);
+#endif
 
 #if PIN_DHT22 >= 0
     // ── DHT22: internal temp + humidity ──────────────────
-    float h = dht.readHumidity();
-    float t = dht.readTemperature(true); // true = Fahrenheit
-
-    if (!isnan(h) && !isnan(t)) {
-        _data.internalTempF    = t;
-        _data.internalHumidity = h;
-        _data.internalValid    = true;
-        Serial.printf("[Sensors] Internal: %.1f°F  %.1f%%RH\n", t, h);
-    } else {
-        _data.internalValid = false;
+    if (now - _lastDHTUpdate >= SENSOR_UPDATE_MS) {
+        _lastDHTUpdate = now;
+        float h = dht.readHumidity();
+        float t = dht.readTemperature(true);
+        if (_mutex) xSemaphoreTake(_mutex, portMAX_DELAY);
+        if (!isnan(h) && !isnan(t)) {
+            _data.internalTempF    = t;
+            _data.internalHumidity = h;
+            _data.internalValid    = true;
+        } else {
+            _data.internalValid = false;
+        }
+        if (_mutex) xSemaphoreGive(_mutex);
+        if (!isnan(t)) Serial.printf("[Sensors] Internal: %.1f°F  %.1f%%RH\n", t, h);
     }
 #else
+    if (_mutex) xSemaphoreTake(_mutex, portMAX_DELAY);
     _data.internalValid = false;
-#endif
-
-#if PIN_DS18B20 >= 0
-    // ── DS18B20: external temp ────────────────────────────
-    ds18b20.requestTemperatures();
-    float ext = ds18b20.getTempFByIndex(0);
-
-    if (ext > -100.0f) {   // DEVICE_DISCONNECTED_F = -196.6°F; anything below -100°F is invalid
-        _data.externalTempF  = ext;
-        _data.externalValid  = true;
-        Serial.printf("[Sensors] External: %.1f°F\n", ext);
-    } else {
-        _data.externalValid = false;
-    }
-#else
-    _data.externalValid = false;
+    if (_mutex) xSemaphoreGive(_mutex);
 #endif
 }
