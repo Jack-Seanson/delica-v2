@@ -6,6 +6,7 @@
  */
 
 #include <Arduino.h>
+#include <Wire.h>
 #include <esp_display_panel.hpp>
 #include <lvgl.h>
 #include "lvgl_v8_port.h"

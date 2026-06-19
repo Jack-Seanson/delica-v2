@@ -24,11 +24,12 @@
 
 // RGB bus — uses 3-wire SPI for init commands; CS and RST driven via TCA9554 expander
 #define ESP_PANEL_BOARD_LCD_RGB_USE_CONTROL_PANEL       (1)
-// 3-wire SPI control panel pins (direct GPIO, not expander)
-#define ESP_PANEL_BOARD_LCD_RGB_SPI_IO_CS               (-1)   // CS via expander PIN3 — handled by pre-begin hook
-#define ESP_PANEL_BOARD_LCD_RGB_SPI_IO_SCK              (2)
-#define ESP_PANEL_BOARD_LCD_RGB_SPI_IO_SDA              (1)
-#define ESP_PANEL_BOARD_LCD_RGB_SPI_CS_USE_EXPNADER     (0)
+// 3-wire SPI control panel pins
+// CS is on TCA9554 expander pin index 2 (0-indexed: PIN1=0, PIN2=1, PIN3=2)
+#define ESP_PANEL_BOARD_LCD_RGB_SPI_IO_CS               (2)    // expander pin index (0-indexed)
+#define ESP_PANEL_BOARD_LCD_RGB_SPI_IO_SCK              (2)    // direct GPIO2
+#define ESP_PANEL_BOARD_LCD_RGB_SPI_IO_SDA              (1)    // direct GPIO1
+#define ESP_PANEL_BOARD_LCD_RGB_SPI_CS_USE_EXPNADER     (1)    // CS via TCA9554
 #define ESP_PANEL_BOARD_LCD_RGB_SPI_SCL_USE_EXPNADER    (0)
 #define ESP_PANEL_BOARD_LCD_RGB_SPI_SDA_USE_EXPNADER    (0)
 #define ESP_PANEL_BOARD_LCD_RGB_SPI_MODE                (0)
@@ -72,6 +73,56 @@
 #define ESP_PANEL_BOARD_LCD_RGB_IO_DATA14       (18)
 #define ESP_PANEL_BOARD_LCD_RGB_IO_DATA15       (17)
 
+// Waveshare ST7701S vendor init sequence (from Waveshare Arduino demo)
+#define ESP_PANEL_BOARD_LCD_VENDOR_INIT_CMD()                                                       \
+    {                                                                                                \
+        {0xFF, (uint8_t []){0x77,0x01,0x00,0x00,0x10}, 5, 0},                                      \
+        {0xC0, (uint8_t []){0x3B,0x00}, 2, 0},                                                      \
+        {0xC1, (uint8_t []){0x0B,0x02}, 2, 0},                                                      \
+        {0xC2, (uint8_t []){0x07,0x02}, 2, 0},                                                      \
+        {0xCC, (uint8_t []){0x10}, 1, 0},                                                           \
+        {0xCD, (uint8_t []){0x08}, 1, 0},                                                           \
+        {0xB0, (uint8_t []){0x00,0x11,0x16,0x0E,0x11,0x06,0x05,0x09,                               \
+                             0x08,0x21,0x06,0x13,0x10,0x29,0x31,0x18}, 16, 0},                     \
+        {0xB1, (uint8_t []){0x00,0x11,0x16,0x0E,0x11,0x07,0x05,0x09,                               \
+                             0x09,0x21,0x05,0x13,0x11,0x2A,0x31,0x18}, 16, 0},                     \
+        {0xFF, (uint8_t []){0x77,0x01,0x00,0x00,0x11}, 5, 0},                                      \
+        {0xB0, (uint8_t []){0x6D}, 1, 0},                                                           \
+        {0xB1, (uint8_t []){0x37}, 1, 0},                                                           \
+        {0xB2, (uint8_t []){0x81}, 1, 0},                                                           \
+        {0xB3, (uint8_t []){0x80}, 1, 0},                                                           \
+        {0xB5, (uint8_t []){0x43}, 1, 0},                                                           \
+        {0xB7, (uint8_t []){0x85}, 1, 0},                                                           \
+        {0xB8, (uint8_t []){0x20}, 1, 0},                                                           \
+        {0xC1, (uint8_t []){0x78}, 1, 0},                                                           \
+        {0xC2, (uint8_t []){0x78}, 1, 0},                                                           \
+        {0xD0, (uint8_t []){0x88}, 1, 0},                                                           \
+        {0xE0, (uint8_t []){0x00,0x00,0x02}, 3, 0},                                                 \
+        {0xE1, (uint8_t []){0x03,0xA0,0x00,0x00,0x04,0xA0,0x00,0x00,0x00,0x20,0x20}, 11, 0},       \
+        {0xE2, (uint8_t []){0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,                               \
+                             0x00,0x00,0x00,0x00,0x00}, 13, 0},                                     \
+        {0xE3, (uint8_t []){0x00,0x00,0x11,0x00}, 4, 0},                                           \
+        {0xE4, (uint8_t []){0x22,0x00}, 2, 0},                                                      \
+        {0xE5, (uint8_t []){0x05,0xEC,0xA0,0xA0,0x07,0xEE,0xA0,0xA0,                               \
+                             0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}, 16, 0},                     \
+        {0xE6, (uint8_t []){0x00,0x00,0x11,0x00}, 4, 0},                                           \
+        {0xE7, (uint8_t []){0x22,0x00}, 2, 0},                                                      \
+        {0xE8, (uint8_t []){0x06,0xED,0xA0,0xA0,0x08,0xEF,0xA0,0xA0,                               \
+                             0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}, 16, 0},                     \
+        {0xEB, (uint8_t []){0x00,0x00,0x40,0x40,0x00,0x00,0x00}, 7, 0},                            \
+        {0xED, (uint8_t []){0xFF,0xFF,0xFF,0xBA,0x0A,0xBF,0x45,0xFF,                               \
+                             0xFF,0x54,0xFB,0xA0,0xAB,0xFF,0xFF,0xFF}, 16, 0},                     \
+        {0xEF, (uint8_t []){0x10,0x0D,0x04,0x08,0x3F,0x1F}, 6, 0},                                \
+        {0xFF, (uint8_t []){0x77,0x01,0x00,0x00,0x13}, 5, 0},                                      \
+        {0xEF, (uint8_t []){0x08}, 1, 0},                                                           \
+        {0xFF, (uint8_t []){0x77,0x01,0x00,0x00,0x00}, 5, 0},                                      \
+        {0x36, (uint8_t []){0x00}, 1, 0},                                                           \
+        {0x3A, (uint8_t []){0x66}, 1, 0},                                                           \
+        {0x11, (uint8_t []){0x00}, 0, 120},                                                         \
+        {0x20, (uint8_t []){0x00}, 0, 120},                                                         \
+        {0x29, (uint8_t []){0x00}, 0, 0},                                                           \
+    }
+
 // Color / transform
 #define ESP_PANEL_BOARD_LCD_COLOR_BITS          (ESP_PANEL_LCD_COLOR_BITS_RGB565)
 #define ESP_PANEL_BOARD_LCD_COLOR_BGR_ORDER     (0)
@@ -90,7 +141,7 @@
 #define ESP_PANEL_BOARD_USE_TOUCH               (1)
 #define ESP_PANEL_BOARD_TOUCH_CONTROLLER        CST816S
 #define ESP_PANEL_BOARD_TOUCH_BUS_TYPE          (ESP_PANEL_BUS_TYPE_I2C)
-#define ESP_PANEL_BOARD_TOUCH_BUS_SKIP_INIT_HOST (0)
+#define ESP_PANEL_BOARD_TOUCH_BUS_SKIP_INIT_HOST (1)   // I2C host already initialized by expander
 
 #define ESP_PANEL_BOARD_TOUCH_I2C_HOST_ID       (0)
 #define ESP_PANEL_BOARD_TOUCH_I2C_CLK_HZ        (400 * 1000)
@@ -121,28 +172,17 @@
 // Used to drive LCD_RST (PIN1), BUZZER (PIN2), LCD_CS (PIN3)
 #define ESP_PANEL_BOARD_USE_EXPANDER            (1)
 #define ESP_PANEL_BOARD_EXPANDER_CHIP           TCA95XX_8BIT
-#define ESP_PANEL_BOARD_EXPANDER_SKIP_INIT_HOST (1)   // share I2C host with touch
+#define ESP_PANEL_BOARD_EXPANDER_SKIP_INIT_HOST (0)   // expander initializes I2C host 0
 #define ESP_PANEL_BOARD_EXPANDER_I2C_HOST_ID    (0)
+#define ESP_PANEL_BOARD_EXPANDER_I2C_CLK_HZ     (400 * 1000)
+#define ESP_PANEL_BOARD_EXPANDER_I2C_SCL_PULLUP (1)
+#define ESP_PANEL_BOARD_EXPANDER_I2C_SDA_PULLUP (1)
+#define ESP_PANEL_BOARD_EXPANDER_I2C_IO_SCL     (7)
+#define ESP_PANEL_BOARD_EXPANDER_I2C_IO_SDA     (15)
 #define ESP_PANEL_BOARD_EXPANDER_I2C_ADDRESS    (0x20)
 
-// ── Pre-begin: silence buzzer via TCA9554 before LCD init ────────────────────
-// The expander is already initialized by the board driver at this point.
-// We set PIN2 (BUZZER) LOW and ensure PIN1 (RST) and PIN3 (CS) are HIGH.
-// This replaces the manual tca_init() from the old display.cpp.
-#define ESP_PANEL_BOARD_EXPANDER_POST_BEGIN_FUNCTION(p)         \
-    {                                                            \
-        auto board = static_cast<esp_panel::board::Board *>(p); \
-        auto expander = board->getExpander();                    \
-        if (expander) {                                          \
-            expander->pinMode(0, OUTPUT);  /* PIN1: LCD_RST */  \
-            expander->pinMode(1, OUTPUT);  /* PIN2: BUZZER  */  \
-            expander->pinMode(2, OUTPUT);  /* PIN3: LCD_CS  */  \
-            expander->digitalWrite(0, HIGH); /* RST=HIGH */     \
-            expander->digitalWrite(1, LOW);  /* BUZZER=OFF */   \
-            expander->digitalWrite(2, HIGH); /* CS=HIGH */      \
-        }                                                        \
-        return true;                                             \
-    }
+// Buzzer (TCA9554 PIN2) is silenced in main.cpp after board->begin()
+// using Wire directly to set the output register LOW on pin index 1.
 
 // ── File version ─────────────────────────────────────────────────────────────
 #define ESP_PANEL_BOARD_CUSTOM_FILE_VERSION_MAJOR 1
