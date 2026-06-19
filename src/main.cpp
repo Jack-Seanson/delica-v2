@@ -30,11 +30,13 @@ void setup()
     board = new Board();
     board->init();
 
-    // Bounce buffer for RGB LCD — prevents screen drift on ESP32-S3
+    // Anti-tear for RGB LCD: 2 frame buffers in PSRAM + direct mode (LVGL_PORT_AVOID_TEARING_MODE=3)
     auto lcd = board->getLCD();
-    lcd->configFrameBufferNumber(2);
     auto lcd_bus = lcd->getBus();
     if (lcd_bus->getBasicAttributes().type == ESP_PANEL_BUS_TYPE_RGB) {
+        // configFrameBufferNumber(2) needed for double-buffer direct mode
+        lcd->configFrameBufferNumber(2);
+        // Bounce buffer: small SRAM staging buffer prevents screen drift
         static_cast<BusRGB *>(lcd_bus)->configRGB_BounceBufferSize(lcd->getFrameWidth() * 10);
     }
 
