@@ -35,6 +35,8 @@ public:
     String ipAddress() const;
 
 private:
-    bool _connected = false;
-    bool _apMode    = false;
+    bool    _connected = false;
+    bool    _apMode    = false;
+    bool    _started   = false;
+    String  _ip        = "";
 };
