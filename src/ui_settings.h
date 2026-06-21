@@ -33,6 +33,7 @@ private:
     lv_obj_t* _screen        = nullptr;
     lv_obj_t* _celsiusSwitch = nullptr;
     lv_obj_t* _brightSlider  = nullptr;
+    lv_obj_t* _wifiNoneBtn   = nullptr;
     lv_obj_t* _wifi1Btn      = nullptr;
     lv_obj_t* _wifi2Btn      = nullptr;
     lv_obj_t* _ipLabel       = nullptr;
@@ -46,6 +47,7 @@ private:
     static void onSave(lv_event_t* e);
     static void onBack(lv_event_t* e);
     static void onBrightChange(lv_event_t* e);
+    static void onWifiNone(lv_event_t* e);
     static void onWifi1(lv_event_t* e);
     static void onWifi2(lv_event_t* e);
 };

@@ -27,6 +27,26 @@ public:
     // completely isolated from the LVGL/display core.
     void startTask();
 
+    // Thread-safe: inject external temperature from BLE weather source
+    void setExternalTemp(float tempF) {
+        if (_mutex) xSemaphoreTake(_mutex, portMAX_DELAY);
+        _data.externalTempF = tempF;
+        _data.externalValid = true;
+        _bleLastUpdate = millis();
+        if (_mutex) xSemaphoreGive(_mutex);
+    }
+
+    // Call periodically to expire BLE data if phone goes out of range (60s timeout)
+    void tickBleExpiry() {
+        if (_data.externalValid && _bleLastUpdate > 0) {
+            if ((millis() - _bleLastUpdate) > 60000UL) {
+                if (_mutex) xSemaphoreTake(_mutex, portMAX_DELAY);
+                _data.externalValid = false;
+                if (_mutex) xSemaphoreGive(_mutex);
+            }
+        }
+    }
+
     // Thread-safe: returns a snapshot of the latest readings
     SensorData getData() const {
         SensorData copy;
@@ -46,6 +66,7 @@ private:
     unsigned long   _lastUpdate        = 0;
     unsigned long   _lastDHTUpdate     = 0;
     unsigned long   _ds18b20RequestAt  = 0;
+    unsigned long   _bleLastUpdate     = 0;   // millis() of last BLE injection
     bool            _ds18b20Started    = false;
 
     static void sensorTask(void *arg);

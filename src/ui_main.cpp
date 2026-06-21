@@ -248,6 +248,8 @@ void UiMain::update(const SensorData& data, const AppConfig& cfg) {
         lv_label_set_text(_extTempLabel,  "--");
         lv_label_set_text(_extTempShadow, "--");
         for (int i = 0; i < 8; i++) lv_label_set_text(_extTempOutline[i], "--");
+        // No BLE data — neutral (perfect/sunny) background
+        if (_currentScene != SCENE_SUNNY) applyScene(SCENE_SUNNY);
     }
 
     if (data.internalValid) {

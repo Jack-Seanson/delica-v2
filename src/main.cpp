@@ -19,6 +19,7 @@
 #include "ota.h"
 #include "ui_main.h"
 #include "ui_settings.h"
+#include "ble_weather.h"
 
 using namespace esp_panel::drivers;
 using namespace esp_panel::board;
@@ -26,12 +27,13 @@ using namespace esp_panel::board;
 // ─────────────────────────────────────────────────────────
 //  Global singletons
 // ─────────────────────────────────────────────────────────
-static Board        *board = nullptr;
-static SensorManager sensors;
-static OtaManager    ota;
-static UiMain        uiMain;
-static UiSettings    uiSettings;
-static AppConfig     cfg;
+static Board              *board = nullptr;
+static SensorManager       sensors;
+static OtaManager          ota;
+static UiMain              uiMain;
+static UiSettings          uiSettings;
+static AppConfig           cfg;
+static BleWeatherReceiver  bleWeather;
 
 enum Screen { SCREEN_MAIN, SCREEN_SETTINGS };
 static Screen activeScreen = SCREEN_MAIN;
@@ -130,7 +132,10 @@ void setup() {
     uiSettings.setIpAddress(ota.ipAddress());
     lvgl_port_unlock();
 
-    // 7. Headlight auto-dim (V2 optional)
+    // 7. BLE weather receiver (phone → outside temp)
+    bleWeather.begin(&sensors);
+
+    // 8. Headlight auto-dim (V2 optional)
 #if HEADLIGHT_PIN >= 0
     pinMode(HEADLIGHT_PIN, INPUT);
     Serial.printf("[App] Headlight auto-dim on GPIO %d\n", HEADLIGHT_PIN);
@@ -189,6 +194,9 @@ void loop() {
 
     // OTA handler
     ota.handle();
+
+    // BLE weather — poll phone for outside temp every 15 s
+    bleWeather.tick();
 
     // Push fresh data to main screen (only on change)
     // sensors.update() runs in background task on core 0

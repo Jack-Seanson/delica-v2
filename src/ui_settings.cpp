@@ -108,13 +108,23 @@ void UiSettings::build(const AppConfig& cfg, SettingsCloseCb onClose) {
     lv_obj_add_event_cb(_brightSlider, onBrightChange, LV_EVENT_VALUE_CHANGED, this);
 
     // ── Wi-Fi selector card ────────────────────────────
-    // Two tap-to-select buttons; active one highlighted in accent colour.
+    // Three tap-to-select buttons: None | 577 Home | Pixel Hotspot
     lv_obj_t* wifiCard = make_card(_screen, 250, 380, 110);
     make_label(wifiCard, LV_SYMBOL_WIFI "  Wi-Fi Network (for OTA)", 0, 0);
 
+    // "None" button
+    _wifiNoneBtn = lv_btn_create(wifiCard);
+    lv_obj_set_size(_wifiNoneBtn, 100, 40);
+    lv_obj_set_pos(_wifiNoneBtn, 0, 28);
+    lv_obj_add_event_cb(_wifiNoneBtn, onWifiNone, LV_EVENT_CLICKED, this);
+    lv_obj_t* w0lbl = lv_label_create(_wifiNoneBtn);
+    lv_label_set_text(w0lbl, "None");
+    lv_obj_set_style_text_font(w0lbl, FONT_SMALL, 0);
+    lv_obj_center(w0lbl);
+
     _wifi1Btn = lv_btn_create(wifiCard);
-    lv_obj_set_size(_wifi1Btn, 160, 40);
-    lv_obj_set_pos(_wifi1Btn, 0, 28);
+    lv_obj_set_size(_wifi1Btn, 120, 40);
+    lv_obj_set_pos(_wifi1Btn, 112, 28);
     lv_obj_add_event_cb(_wifi1Btn, onWifi1, LV_EVENT_CLICKED, this);
     lv_obj_t* w1lbl = lv_label_create(_wifi1Btn);
     lv_label_set_text(w1lbl, WIFI_NAME1);
@@ -122,8 +132,8 @@ void UiSettings::build(const AppConfig& cfg, SettingsCloseCb onClose) {
     lv_obj_center(w1lbl);
 
     _wifi2Btn = lv_btn_create(wifiCard);
-    lv_obj_set_size(_wifi2Btn, 160, 40);
-    lv_obj_set_pos(_wifi2Btn, 176, 28);
+    lv_obj_set_size(_wifi2Btn, 120, 40);
+    lv_obj_set_pos(_wifi2Btn, 244, 28);
     lv_obj_add_event_cb(_wifi2Btn, onWifi2, LV_EVENT_CLICKED, this);
     lv_obj_t* w2lbl = lv_label_create(_wifi2Btn);
     lv_label_set_text(w2lbl, WIFI_NAME2);
@@ -174,10 +184,13 @@ void UiSettings::setIpAddress(const String& ip) {
 }
 
 void UiSettings::updateWifiButtons() {
-    // Highlight the active network in accent colour; inactive in dark grey
-    bool net1Active = (strcmp(_cfg.wifiSSID, WIFI_SSID1) == 0 || _cfg.wifiSSID[0] == '\0');
-    lv_obj_set_style_bg_color(_wifi1Btn, net1Active ? COLOR_ACCENT : lv_color_hex(0x333355), 0);
-    lv_obj_set_style_bg_color(_wifi2Btn, net1Active ? lv_color_hex(0x333355) : COLOR_ACCENT, 0);
+    // Highlight active choice in accent; others in dark grey
+    bool noneActive = (_cfg.wifiSSID[0] == '\0');
+    bool net1Active = (strcmp(_cfg.wifiSSID, WIFI_SSID1) == 0);
+    bool net2Active = (strcmp(_cfg.wifiSSID, WIFI_SSID2) == 0);
+    lv_obj_set_style_bg_color(_wifiNoneBtn, noneActive ? COLOR_ACCENT : lv_color_hex(0x333355), 0);
+    lv_obj_set_style_bg_color(_wifi1Btn,    net1Active ? COLOR_ACCENT : lv_color_hex(0x333355), 0);
+    lv_obj_set_style_bg_color(_wifi2Btn,    net2Active ? COLOR_ACCENT : lv_color_hex(0x333355), 0);
 }
 
 void UiSettings::collectConfig() {
@@ -201,6 +214,14 @@ void UiSettings::onBack(lv_event_t* e) {
 void UiSettings::onBrightChange(lv_event_t* e) {
     UiSettings* self = (UiSettings*)lv_event_get_user_data(e);
     self->_cfg.brightness = (uint8_t)lv_slider_get_value(self->_brightSlider);
+}
+
+void UiSettings::onWifiNone(lv_event_t* e) {
+    UiSettings* self = (UiSettings*)lv_event_get_user_data(e);
+    self->_cfg.wifiSSID[0] = '\0';
+    self->_cfg.wifiPass[0] = '\0';
+    self->updateWifiButtons();
+    Serial.println("[Settings] Wi-Fi → None (OTA disabled)");
 }
 
 void UiSettings::onWifi1(lv_event_t* e) {
