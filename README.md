@@ -8,8 +8,9 @@ An ESP32-S3 temperature display built for a **Mitsubishi Delica L300** (and any 
 
 ## Features
 
-- 🌡️ **Outside temp** (top) — DS18B20 waterproof probe via 1-Wire
+- 🌡️ **Outside temp** (top) — via BLE from the companion Android app (real-time weather from GPS location) **or** DS18B20 waterproof probe via 1-Wire
 - 🌡️ **Inside temp** (bottom) — DHT22 cabin sensor (temp + humidity)
+- 📱 **BLE weather receiver** — connects to the [Delica Weather Android app](#companion-android-app) every 15 seconds to get the real outside air temperature via Open-Meteo (no API key required)
 - 🎨 **Dynamic backgrounds** change based on outside temperature:
   - ❄️ Frozen (< 32°F)
   - 🌧️ Cold (< 50°F)
@@ -133,6 +134,31 @@ src/
 ├── img_bg_*.h        — Background scene images (C array, LVGL format)
 └── img_van.h         — Delica van pixel art
 ```
+
+---
+
+## Companion Android App
+
+The **Delica Weather** Android app ([`DelicaWeather/`](https://github.com/Jack-Seanson/DelicaWeather)) runs as a background service on your phone and broadcasts the real outside air temperature to the display via BLE.
+
+### How it works
+1. App fetches current temperature from [Open-Meteo](https://open-meteo.com/) using your phone's GPS location (no API key required)
+2. App advertises itself as a BLE GATT peripheral named **"DelicaWeather"**
+3. ESP32 scans for the device every 15 seconds, connects, reads the temperature characteristic, then disconnects
+4. Temperature is displayed in the **OUTSIDE** field and the background scene updates automatically
+
+### BLE protocol
+| | Value |
+|--|--|
+| Service UUID | `12345678-1234-1234-1234-123456789abc` |
+| Characteristic UUID | `12345678-1234-1234-1234-123456789abd` |
+| Value format | UTF-8 string, e.g. `"75.2"` (°F) |
+| Device name | `"DelicaWeather"` |
+
+### Requirements
+- Android 8.0+ (Oreo)
+- Bluetooth + Location permissions
+- Phone within ~30 feet of the display
 
 ---
 
