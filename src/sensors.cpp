@@ -92,9 +92,8 @@ void SensorManager::update() {
         }
     }
 #else
-    if (_mutex) xSemaphoreTake(_mutex, portMAX_DELAY);
-    _data.externalValid = false;
-    if (_mutex) xSemaphoreGive(_mutex);
+    // DS18B20 disabled — externalValid is managed by BLE (setExternalTemp).
+    // Do NOT touch externalValid here or it will overwrite BLE data every 20ms.
 #endif
 
 #if PIN_DHT22 >= 0
