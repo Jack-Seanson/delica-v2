@@ -80,7 +80,11 @@ void SensorManager::update() {
                 _data.externalValid = false;
             }
             if (_mutex) xSemaphoreGive(_mutex);
-            if (ext > -100.0f) Serial.printf("[Sensors] External: %.1f°F\n", ext);
+            if (ext > -100.0f) {
+                Serial.printf("[Sensors] External: %.1f°F\n", ext);
+            } else {
+                Serial.printf("[Sensors] External FAIL (raw=%.1f) — check DS18B20 wiring on GPIO%d\n", ext, PIN_DS18B20);
+            }
             // Kick next conversion
             ds18b20.requestTemperatures();
             _ds18b20RequestAt = now;
@@ -108,7 +112,11 @@ void SensorManager::update() {
             _data.internalValid = false;
         }
         if (_mutex) xSemaphoreGive(_mutex);
-        if (!isnan(t)) Serial.printf("[Sensors] Internal: %.1f°F  %.1f%%RH\n", t, h);
+        if (!isnan(t)) {
+            Serial.printf("[Sensors] Internal: %.1f°F  %.1f%%RH\n", t, h);
+        } else {
+            Serial.printf("[Sensors] Internal FAIL (t=%.1f h=%.1f) — check DHT22 wiring on GPIO%d\n", t, h, PIN_DHT22);
+        }
     }
 #else
     if (_mutex) xSemaphoreTake(_mutex, portMAX_DELAY);
